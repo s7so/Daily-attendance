@@ -28,6 +28,8 @@ class DepartmentsDatabase(Database):
         self.create_tables()
         self.update_database_schema()  # تحديث هيكل قاعدة البيانات عند التهيئة
         self.initialize_default_departments()
+        self.initialize_default_roles()  # إضافة استدعاء الدالة الجديدة
+        self.initialize_default_users()  # إضافة استدعاء الدالة الجديدة
         self.initialize_default_shifts()  # إضافة استدعاء الدالة الجديدة
 
     def __del__(self):
@@ -106,7 +108,8 @@ class DepartmentsDatabase(Database):
                 -- إنشاء جدول الأدوار
                 CREATE TABLE IF NOT EXISTS roles (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL UNIQUE
+                    name TEXT NOT NULL UNIQUE,
+                    code TEXT NOT NULL UNIQUE
                 );
 
                 -- إنشاء جدول الصلاحيات
@@ -1963,3 +1966,69 @@ class DepartmentsDatabase(Database):
         except sqlite3.Error as e:
             print(f"خطأ في تنظيف التوكنات: {str(e)}")
             self.rollback()
+
+    def initialize_default_roles(self):
+        """إضافة الأدوار الأساسية إذا لم تكن موجودة"""
+        try:
+            default_roles = [
+                ("مدير", "admin"),
+                ("موظف", "employee"),
+                ("مشرف", "supervisor")
+            ]
+            
+            cursor = self.conn.cursor()
+            for role_name, role_code in default_roles:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO roles (name, code) VALUES (?, ?)",
+                    (role_name, role_code)
+                )
+            self.conn.commit()
+            print("تم إضافة الأدوار الافتراضية بنجاح")
+        except Exception as e:
+            print(f"خطأ في إضافة الأدوار الافتراضية: {str(e)}")
+            self.conn.rollback()
+
+    def initialize_default_users(self):
+        """إنشاء مستخدم مدير افتراضي إذا لم يوجد أي مديرين"""
+        try:
+            cursor = self.conn.cursor()
+            
+            # التحقق من وجود أي مديرين
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM employees e
+                JOIN roles r ON e.role_id = r.id
+                WHERE r.code = 'admin'
+            """)
+            admin_count = cursor.fetchone()[0]
+            
+            if admin_count == 0:
+                # إنشاء مستخدم مدير افتراضي
+                default_password = "admin123"  # كلمة مرور افتراضية
+                hashed_password = "هنا يتم استخدام دالة التجزئة المناسبة"
+                
+                # الحصول على معرف دور المدير
+                cursor.execute("SELECT id FROM roles WHERE code = 'admin'")
+                role_id = cursor.fetchone()[0]
+                
+                cursor.execute("""
+                    INSERT INTO employees (
+                        id, 
+                        name, 
+                        password_hash, 
+                        role_id,
+                        department_code
+                    ) VALUES (?, ?, ?, ?, ?)
+                """, (
+                    "ADM001",
+                    "المدير الافتراضي",
+                    hashed_password,
+                    role_id,
+                    "ADM"
+                ))
+                
+                self.conn.commit()
+                print("تم إنشاء المدير الافتراضي بنجاح")
+        except Exception as e:
+            print(f"خطأ في إنشاء المدير الافتراضي: {str(e)}")
+            self.conn.rollback()
