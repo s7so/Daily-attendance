@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database
+*.db
+*.db-journal
+src/data/
+
+# Logs
+*.log
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+
+# Remember me tokens
+remember_me.token
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Coverage
+.coverage
+coverage_report/
+htmlcov/
+
+# Local development
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Project specific
+temp/ 
