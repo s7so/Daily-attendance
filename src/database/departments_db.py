@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 import secrets
 import os
 
+
 class DepartmentsDatabase(Database):
     def __init__(self, db_path=None):
         """تهيئة قاعدة البيانات"""
@@ -28,7 +29,7 @@ class DepartmentsDatabase(Database):
         self.update_database_schema()  # تحديث هيكل قاعدة البيانات عند التهيئة
         self.initialize_default_departments()
         self.initialize_default_shifts()  # إضافة استدعاء الدالة الجديدة
-        
+
     def __del__(self):
         """التأكد من إغلاق الاتصال عند حذف الكائن"""
         self.close()
@@ -63,13 +64,13 @@ class DepartmentsDatabase(Database):
             except Exception as e:
                 print(f"Error closing database connection: {e}")
                 raise
-        
+
     def create_tables(self):
         """تهيئة قاعدة البيانات وإنشاء الجداول"""
         try:
             # بدء المعاملة
             self.conn.execute("BEGIN TRANSACTION")
-            
+
             # إنشاء الجداول
             self.conn.executescript("""
                 -- جدول إصدارات قاعدة البيانات
@@ -93,7 +94,7 @@ class DepartmentsDatabase(Database):
                 -- إنشاء مؤشر للبحث السريع
                 CREATE INDEX IF NOT EXISTS idx_remember_me_employee ON remember_me_tokens(employee_id);
                 CREATE INDEX IF NOT EXISTS idx_remember_me_expires ON remember_me_tokens(expires_at);
-
+                
                 -- إنشاء جدول الأقسام
                 CREATE TABLE IF NOT EXISTS departments (
                     code TEXT PRIMARY KEY,
@@ -242,16 +243,16 @@ class DepartmentsDatabase(Database):
             print(f"Error creating tables: {str(e)}")
             self.conn.rollback()
             raise
-        
+
     def get_connection(self):
         """الحصول على اتصال بقاعدة البيانات"""
         return self.conn
-        
+
     def execute_query(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         """تنفيذ استعلام SQL"""
         conn = self.get_connection()
         return conn.execute(query, params)
-        
+
     def execute_query_with_commit(self, query: str, params: tuple = ()) -> bool:
         """تنفيذ استعلام SQL مع حفظ التغييرات"""
         try:
@@ -261,7 +262,7 @@ class DepartmentsDatabase(Database):
             return True
         except sqlite3.Error:
             return False
-            
+
     def get_status_types(self) -> List[Dict]:
         """جلب جميع أنواع الحالات"""
         cursor = self.execute_query(
@@ -284,7 +285,7 @@ class DepartmentsDatabase(Database):
             }
             for row in cursor.fetchall()
         ]
-        
+
     def get_available_managers(self) -> List[Dict]:
         """جلب قائمة الموظفين المؤهلين ليكونوا مدراء"""
         try:
@@ -315,7 +316,7 @@ class DepartmentsDatabase(Database):
         """إضافة قسم جديد"""
         try:
             print(f"Adding new department: Code={code}, Name={name}, Manager ID={manager_id}")
-            
+
             # التحقق من عدم وجود القسم
             cursor = self.execute_query(
                 "SELECT 1 FROM departments WHERE code = ?",
@@ -324,7 +325,7 @@ class DepartmentsDatabase(Database):
             if cursor.fetchone():
                 print(f"Department with code {code} already exists")
                 return False
-            
+
             # التحقق من وجود المدير وصلاحياته إذا تم تحديده
             if manager_id:
                 cursor = self.execute_query(
@@ -338,27 +339,27 @@ class DepartmentsDatabase(Database):
                 if not cursor.fetchone():
                     print(f"Employee {manager_id} is not a manager")
                     return False
-                    
+
             # إضافة القسم
             self.execute_query(
                 "INSERT INTO departments (code, name, manager_id) VALUES (?, ?, ?)",
                 (code, name, manager_id)
             )
-            
+
             self.commit()
             print(f"Successfully added department {name} with code {code}")
             return True
-            
+
         except sqlite3.Error as e:
             print(f"Error adding department: {e}")
             self.rollback()
             return False
-            
+
     def update_department(self, code: str, name: str, manager_id: Optional[str] = None) -> bool:
         """تحديث معلومات قسم"""
         try:
             print(f"Updating department: Code={code}, Name={name}, Manager ID={manager_id}")
-            
+
             # التحقق من وجود القسم
             cursor = self.execute_query(
                 "SELECT 1 FROM departments WHERE code = ?",
@@ -367,7 +368,7 @@ class DepartmentsDatabase(Database):
             if not cursor.fetchone():
                 print(f"Department with code {code} does not exist")
                 return False
-            
+
             # التحقق من وجود المدير وصلاحياته إذا تم تحديده
             if manager_id:
                 cursor = self.execute_query(
@@ -381,22 +382,22 @@ class DepartmentsDatabase(Database):
                 if not cursor.fetchone():
                     print(f"Employee {manager_id} is not a manager")
                     return False
-                    
+
             # تحديث معلومات القسم
             self.execute_query(
                 "UPDATE departments SET name = ?, manager_id = ? WHERE code = ?",
                 (name, manager_id, code)
             )
-            
+
             self.commit()
             print(f"Successfully updated department {name}")
             return True
-            
+
         except sqlite3.Error as e:
             print(f"Error updating department: {e}")
             self.rollback()
             return False
-            
+
     def get_department(self, code: str) -> Optional[Dict]:
         """جلب معلومات قسم معين"""
         try:
@@ -405,7 +406,7 @@ class DepartmentsDatabase(Database):
                 SELECT 
                     d.code, 
                     d.name, 
-                    d.manager_id,
+                    d.manager_id, 
                     e.name as manager_name,
                     (SELECT COUNT(*) FROM employees WHERE department_code = d.code) as employee_count
                 FROM departments d
@@ -424,24 +425,25 @@ class DepartmentsDatabase(Database):
                     'employee_count': row['employee_count']
                 }
             return None
+
         except sqlite3.Error as e:
             print(f"Error getting department: {e}")
             return None
-        
+
     def get_all_departments(self) -> List[Dict]:
         """جلب جميع الأقسام"""
         cursor = self.execute_query("""
-            SELECT 
-                d.code, 
-                d.name, 
-                d.manager_id,
-                e.name as manager_name
-            FROM departments d
-            LEFT JOIN employees e ON d.manager_id = e.id
-            ORDER BY d.name
-        """)
+                SELECT 
+                    d.code, 
+                    d.name, 
+                    d.manager_id,
+                    e.name as manager_name
+                FROM departments d
+                LEFT JOIN employees e ON d.manager_id = e.id
+                ORDER BY d.name
+            """)
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def get_department_employees(self, code: str) -> List[Dict]:
         """جلب موظفي قسم معين"""
         cursor = self.execute_query(
@@ -461,7 +463,7 @@ class DepartmentsDatabase(Database):
         employees = [dict(row) for row in cursor.fetchall()]
         print(f"Found {len(employees)} employees for department {code}")
         return employees
-        
+
     def get_all_employees(self) -> List[Dict]:
         """Get all employees with their department and role information"""
         cursor = self.execute_query(
@@ -480,7 +482,7 @@ class DepartmentsDatabase(Database):
             """
         )
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def transfer_employee(self, employee_id: str, new_department_code: str) -> bool:
         """نقل موظف إلى قسم آخر"""
         try:
@@ -538,7 +540,7 @@ class DepartmentsDatabase(Database):
             print(f"Error transferring employee: {str(e)}")
             self.conn.rollback()
             return False
-            
+
     def get_employee_department_history(self, employee_id: str) -> List[Dict]:
         """جلب سجل نقل الموظف بين الأقسام"""
         cursor = self.execute_query(
@@ -556,13 +558,13 @@ class DepartmentsDatabase(Database):
             (employee_id,)
         )
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def get_roles(self):
         """الحصول على قائمة الأدوار الوظيفية"""
         query = "SELECT id, name FROM roles ORDER BY id"
         cursor = self.execute_query(query)
         return [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
-        
+
     def get_managers(self) -> List[Dict]:
         """جلب جميع الموظفين الذين لديهم دور مدير"""
         cursor = self.execute_query(
@@ -579,7 +581,7 @@ class DepartmentsDatabase(Database):
             """
         )
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def add_role(self, name: str) -> bool:
         """إضافة دور وظيفي جديد"""
         try:
@@ -593,7 +595,7 @@ class DepartmentsDatabase(Database):
         except sqlite3.Error:
             self.rollback()
             return False
-            
+
     def update_role(self, old_name: str, new_name: str) -> bool:
         """تحديث اسم الدور الوظيفي"""
         try:
@@ -606,7 +608,7 @@ class DepartmentsDatabase(Database):
         except sqlite3.Error:
             self.rollback()
             return False
-            
+
     def delete_role(self, name: str) -> bool:
         """Delete a role if it has no employees"""
         try:
@@ -622,7 +624,7 @@ class DepartmentsDatabase(Database):
             )
             if cursor.fetchone()['count'] > 0:
                 return False
-                
+
             # Delete role if no employees
             self.execute_query(
                 "DELETE FROM roles WHERE name = ?",
@@ -633,7 +635,7 @@ class DepartmentsDatabase(Database):
         except sqlite3.Error:
             self.rollback()
             return False
-            
+
     def get_role(self, role_id: int) -> Optional[Dict]:
         """Get role information by ID."""
         self.cursor.execute(
@@ -657,7 +659,7 @@ class DepartmentsDatabase(Database):
                 'employee_count': row[2]
             }
         return None
-        
+
     def get_all_roles(self) -> List[Dict]:
         """Get all roles with employee count"""
         cursor = self.execute_query(
@@ -674,7 +676,7 @@ class DepartmentsDatabase(Database):
             """
         )
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def get_role_employees(self, role_id: int) -> List[Dict]:
         """جلب جميع الموظفين الذين لديهم دور معين"""
         cursor = self.execute_query(
@@ -691,14 +693,14 @@ class DepartmentsDatabase(Database):
             (role_id,)
         )
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def add_employee_status(
-        self,
-        employee_id: str,
-        status_type_id: int,
-        start_date: str,
-        end_date: Optional[str] = None,
-        notes: Optional[str] = None
+            self,
+            employee_id: str,
+            status_type_id: int,
+            start_date: str,
+            end_date: Optional[str] = None,
+            notes: Optional[str] = None
     ) -> bool:
         """إضافة حالة جديدة لموظف"""
         try:
@@ -710,7 +712,7 @@ class DepartmentsDatabase(Database):
             if not cursor.fetchone():
                 print(f"Employee {employee_id} not found")
                 return False
-                
+
             # التحقق من نوع الحالة وجلب تفاصيلها
             cursor = self.execute_query(
                 "SELECT requires_approval, max_days FROM status_types WHERE id = ?",
@@ -720,12 +722,12 @@ class DepartmentsDatabase(Database):
             if not status_type:
                 print(f"Status type {status_type_id} not found")
                 return False
-                
+
             requires_approval = status_type['requires_approval']
-            
+
             # إذا كانت الحالة لا تتطلب موافقة، نوافق عليها تلقائياً
             approved = not requires_approval
-            
+
             # إضافة سجل الحالة
             self.execute_query(
                 """
@@ -735,7 +737,7 @@ class DepartmentsDatabase(Database):
                 """,
                 (employee_id, status_type_id, start_date, end_date, notes, approved)
             )
-            
+
             self.commit()
             print(f"Successfully added status for employee {employee_id}")
             return True
@@ -743,11 +745,11 @@ class DepartmentsDatabase(Database):
             print(f"Error in add_employee_status: {str(e)}")
             self.rollback()
             return False
-            
+
     def approve_employee_status(
-        self,
-        status_id: int,
-        approved_by: str
+            self,
+            status_id: int,
+            approved_by: str
     ) -> bool:
         """Approve an employee status record."""
         try:
@@ -762,7 +764,7 @@ class DepartmentsDatabase(Database):
             )
             if not self.cursor.fetchone():
                 return False  # Only managers can approve
-                
+
             self.cursor.execute(
                 """
                 UPDATE employee_status 
@@ -775,41 +777,41 @@ class DepartmentsDatabase(Database):
             return self.cursor.rowcount > 0
         except sqlite3.Error:
             return False
-            
+
     def get_employee_status(
-        self,
-        employee_id: str,
-        from_date: Optional[str] = None,
-        to_date: Optional[str] = None
+            self,
+            employee_id: str,
+            from_date: Optional[str] = None,
+            to_date: Optional[str] = None
     ) -> List[Dict]:
         """Get status history for an employee."""
         query = """
-            SELECT 
-                s.id,
-                t.name as status_type,
-                s.start_date,
-                s.end_date,
-                s.notes,
-                s.approved,
-                e.name as approved_by_name,
-                s.created_at
-            FROM employee_status s
-            JOIN status_types t ON s.status_type_id = t.id
-            LEFT JOIN employees e ON s.approved_by = e.id
-            WHERE s.employee_id = ?
-        """
+                SELECT 
+                    s.id,
+                    t.name as status_type,
+                    s.start_date,
+                    s.end_date,
+                    s.notes,
+                    s.approved,
+                    e.name as approved_by_name,
+                    s.created_at
+                FROM employee_status s
+                JOIN status_types t ON s.status_type_id = t.id
+                LEFT JOIN employees e ON s.approved_by = e.id
+                WHERE s.employee_id = ?
+            """
         params = [employee_id]
-        
+
         if from_date:
             query += " AND (s.end_date >= ? OR s.end_date IS NULL)"
             params.append(from_date)
-            
+
         if to_date:
             query += " AND s.start_date <= ?"
             params.append(to_date)
-            
+
         query += " ORDER BY s.start_date DESC"
-        
+
         cursor = self.execute_query(query, tuple(params))
         return [
             {
@@ -824,29 +826,29 @@ class DepartmentsDatabase(Database):
             }
             for row in cursor.fetchall()
         ]
-        
+
     def get_department_status(
-        self,
-        department_code: str,
-        date: Optional[str] = None
+            self,
+            department_code: str,
+            date: Optional[str] = None
     ) -> List[Dict]:
         """Get current status for all employees in a department."""
         query = """
-            SELECT 
-                e.id as employee_id,
-                e.name as employee_name,
-                t.name as status_type,
-                s.start_date,
-                s.end_date,
-                s.notes,
-                s.approved,
-                s.approved_by,
-                s.created_at
-            FROM employees e
-            JOIN employee_status s ON e.id = s.employee_id
-            JOIN status_types t ON s.status_type_id = t.id
-            WHERE e.department_code = ?
-        """
+                SELECT 
+                    e.id as employee_id,
+                    e.name as employee_name,
+                    t.name as status_type,
+                    s.start_date,
+                    s.end_date,
+                    s.notes,
+                    s.approved,
+                    s.approved_by,
+                    s.created_at
+                FROM employees e
+                JOIN employee_status s ON e.id = s.employee_id
+                JOIN status_types t ON s.status_type_id = t.id
+                WHERE e.department_code = ?
+            """
         params = [department_code]
         if date:
             query += " AND s.start_date <= ? AND (s.end_date >= ? OR s.end_date IS NULL)"
@@ -866,7 +868,7 @@ class DepartmentsDatabase(Database):
             }
             for row in cursor.fetchall()
         ]
-        
+
     def get_status_id(self, employee_id: str, start_date: str) -> Optional[int]:
         """Get status ID for a specific employee and start date."""
         try:
@@ -882,9 +884,9 @@ class DepartmentsDatabase(Database):
             return result[0] if result else None
         except sqlite3.Error:
             return None
-        
+
     def add_status_type(self, name: str, requires_approval: bool = True,
-                         max_days: Optional[int] = None) -> bool:
+                        max_days: Optional[int] = None) -> bool:
         """إضافة نوع حالة جديد"""
         return self.execute_query_with_commit(
             """
@@ -893,9 +895,9 @@ class DepartmentsDatabase(Database):
             """,
             (name, requires_approval, max_days)
         )
-        
+
     def update_status_type(self, current_name: str, new_name: str,
-                          requires_approval: bool, max_days: Optional[int] = None) -> bool:
+                           requires_approval: bool, max_days: Optional[int] = None) -> bool:
         """تحديث نوع حالة"""
         return self.execute_query_with_commit(
             """
@@ -905,7 +907,7 @@ class DepartmentsDatabase(Database):
             """,
             (new_name, requires_approval, max_days, current_name)
         )
-        
+
     def delete_status_type(self, name: str) -> bool:
         """حذف نوع حالة"""
         try:
@@ -921,14 +923,14 @@ class DepartmentsDatabase(Database):
             )
             if cursor.fetchone()['count'] > 0:
                 return False
-                
+
             return self.execute_query_with_commit(
                 "DELETE FROM status_types WHERE name = ?",
                 (name,)
             )
         except sqlite3.Error:
             return False
-            
+
     def get_all_status_types(self) -> List[Dict]:
         """جلب جميع أنواع الحالات مع إحصائياتها"""
         cursor = self.execute_query(
@@ -945,10 +947,10 @@ class DepartmentsDatabase(Database):
             """
         )
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def add_shift_type(self, name: str, start_time: str, end_time: str,
-                      break_duration: int = 60, flexible_minutes: int = 0,
-                      overtime_allowed: bool = False) -> bool:
+                       break_duration: int = 60, flexible_minutes: int = 0,
+                       overtime_allowed: bool = False) -> bool:
         """إضافة نوع وردية جديد"""
         return self.execute_query_with_commit(
             """
@@ -958,10 +960,10 @@ class DepartmentsDatabase(Database):
             """,
             (name, start_time, end_time, break_duration, flexible_minutes, overtime_allowed)
         )
-        
+
     def update_shift_type(self, current_name: str, new_name: str,
-                         start_time: str, end_time: str, break_duration: int = 60,
-                         flexible_minutes: int = 0, overtime_allowed: bool = False) -> bool:
+                          start_time: str, end_time: str, break_duration: int = 60,
+                          flexible_minutes: int = 0, overtime_allowed: bool = False) -> bool:
         """تحديث نوع وردية"""
         return self.execute_query_with_commit(
             """
@@ -970,10 +972,10 @@ class DepartmentsDatabase(Database):
                 break_duration = ?, flexible_minutes = ?, overtime_allowed = ?
             WHERE name = ?
             """,
-            (new_name, start_time, end_time, break_duration, 
+            (new_name, start_time, end_time, break_duration,
              flexible_minutes, overtime_allowed, current_name)
         )
-        
+
     def delete_shift_type(self, name: str) -> bool:
         """حذف نوع وردية"""
         try:
@@ -989,14 +991,14 @@ class DepartmentsDatabase(Database):
             )
             if cursor.fetchone()['count'] > 0:
                 return False
-                
+
             return self.execute_query_with_commit(
                 "DELETE FROM shift_types WHERE name = ?",
                 (name,)
             )
         except sqlite3.Error:
             return False
-            
+
     def get_all_shift_types(self) -> List[Dict]:
         """جلب جميع أنواع الورديات مع إحصائياتها"""
         cursor = self.execute_query(
@@ -1018,14 +1020,14 @@ class DepartmentsDatabase(Database):
             """
         )
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def assign_employee_shift(
-        self,
-        employee_id: str,
-        shift_type_id: int,
-        start_date: str,
-        end_date: Optional[str] = None,
-        notes: Optional[str] = None
+            self,
+            employee_id: str,
+            shift_type_id: int,
+            start_date: str,
+            end_date: Optional[str] = None,
+            notes: Optional[str] = None
     ) -> bool:
         """تعيين وردية لموظف"""
         try:
@@ -1036,7 +1038,7 @@ class DepartmentsDatabase(Database):
             )
             if not cursor.fetchone():
                 return False
-                
+
             # التحقق من وجود الوردية
             cursor = self.execute_query(
                 "SELECT 1 FROM shift_types WHERE id = ?",
@@ -1044,7 +1046,7 @@ class DepartmentsDatabase(Database):
             )
             if not cursor.fetchone():
                 return False
-                
+
             # إضافة الوردية للموظف
             return self.execute_query_with_commit(
                 """
@@ -1056,70 +1058,70 @@ class DepartmentsDatabase(Database):
             )
         except sqlite3.Error:
             return False
-            
+
     def get_employee_shifts(
-        self,
-        employee_id: str,
-        from_date: Optional[str] = None,
-        to_date: Optional[str] = None
+            self,
+            employee_id: str,
+            from_date: Optional[str] = None,
+            to_date: Optional[str] = None
     ) -> List[Dict]:
         """جلب ورديات موظف معين"""
         query = """
-            SELECT 
-                s.id,
-                t.name as shift_name,
-                t.start_time,
-                t.end_time,
-                s.start_date,
-                s.end_date,
-                s.notes
-            FROM employee_shifts s
-            JOIN shift_types t ON s.shift_type_id = t.id
-            WHERE s.employee_id = ?
-        """
+                SELECT 
+                    s.id,
+                    t.name as shift_name,
+                    t.start_time,
+                    t.end_time,
+                    s.start_date,
+                    s.end_date,
+                    s.notes
+                FROM employee_shifts s
+                JOIN shift_types t ON s.shift_type_id = t.id
+                WHERE s.employee_id = ?
+            """
         params = [employee_id]
-        
+
         if from_date:
             query += " AND (s.end_date >= ? OR s.end_date IS NULL)"
             params.append(from_date)
-            
+
         if to_date:
             query += " AND s.start_date <= ?"
             params.append(to_date)
-            
+
         query += " ORDER BY s.start_date DESC"
-        
+
         cursor = self.execute_query(query, tuple(params))
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def get_department_shifts(self, department_code: str, date: Optional[str] = None) -> List[Dict]:
         """جلب الورديات الحالية لجميع موظفي قسم معين"""
         query = """
-            SELECT 
-                e.id as employee_id,
-                e.name as employee_name,
-                t.name as shift_name,
-                t.start_time,
-                t.end_time,
-                s.start_date,
-                s.end_date,
-                s.notes
-            FROM employees e
-            LEFT JOIN employee_shifts s ON e.id = s.employee_id
-            LEFT JOIN shift_types t ON s.shift_type_id = t.id
-            WHERE e.department_code = ?
-        """
+                SELECT 
+                    e.id as employee_id,
+                    e.name as employee_name,
+                    t.name as shift_name,
+                    t.start_time,
+                    t.end_time,
+                    s.start_date,
+                    s.end_date,
+                    s.notes
+                FROM employees e
+                LEFT JOIN employee_shifts s ON e.id = s.employee_id
+                LEFT JOIN shift_types t ON s.shift_type_id = t.id
+                WHERE e.department_code = ?
+            """
         params = [department_code]
-        
+
         if date:
             query += " AND (s.start_date <= ? AND (s.end_date >= ? OR s.end_date IS NULL))"
             params.extend([date, date])
-            
+
         query += " ORDER BY e.name"
-        
+
         cursor = self.execute_query(query, tuple(params))
         return [dict(row) for row in cursor.fetchall()]
-        
+
     def get_all_attendance(self, date: str) -> List[Dict]:
         """جلب جميع سجلات الحضور في تاريخ محدد"""
         try:
@@ -1151,8 +1153,8 @@ class DepartmentsDatabase(Database):
                 LEFT JOIN status_types stype ON estat.status_type_id = stype.id
                 WHERE a.date = ?
                 ORDER BY a.check_in_time DESC
-            """, (date, date, date, date, date))
-            
+                """, (date, date, date, date, date))
+
             records = []
             for row in cursor.fetchall():
                 record = {
@@ -1169,14 +1171,14 @@ class DepartmentsDatabase(Database):
                     'status_type': row['status_type']
                 }
                 records.append(record)
-            
+
             print(f"Found {len(records)} attendance records")
             return records
-            
+
         except sqlite3.Error as e:
             print(f"Error getting attendance records: {e}")
             return []
-        
+
     def get_department_attendance(self, dept_code: str, date_str: str) -> List[Dict]:
         """جلب سجلات حضور قسم معين في تاريخ محدد"""
         try:
@@ -1208,8 +1210,8 @@ class DepartmentsDatabase(Database):
                 LEFT JOIN status_types stype ON estat.status_type_id = stype.id
                 WHERE d.code = ? AND a.date = ?
                 ORDER BY a.check_in_time DESC
-            """, (date_str, date_str, date_str, date_str, dept_code, date_str))
-            
+                """, (date_str, date_str, date_str, date_str, dept_code, date_str))
+
             records = []
             for row in cursor.fetchall():
                 record = {
@@ -1226,10 +1228,10 @@ class DepartmentsDatabase(Database):
                     'status_type': row['status_type']
                 }
                 records.append(record)
-            
+
             print(f"Found {len(records)} attendance records for department {dept_code}")
             return records
-            
+
         except sqlite3.Error as e:
             print(f"Error getting department attendance records: {e}")
             return []
@@ -1238,21 +1240,21 @@ class DepartmentsDatabase(Database):
         """جلب سجلات حضور اليوم"""
         current_date = date.today().isoformat()
         print(f"Getting attendance for date: {current_date}")
-        
+
         cursor = self.execute_query("""
-            SELECT a.*, e.name,
-                   d.name as department_name,
-                   st.name as shift_name
-            FROM attendance a
-            JOIN employees e ON a.employee_id = e.id
-            LEFT JOIN departments d ON e.department_code = d.code
-            LEFT JOIN employee_shifts es ON e.id = es.employee_id 
-                AND ? BETWEEN es.start_date AND COALESCE(es.end_date, ?)
-            LEFT JOIN shift_types st ON es.shift_type_id = st.id
-            WHERE a.date = ?
-            ORDER BY a.check_in_time DESC
-        """, (current_date, current_date, current_date))
-        
+                SELECT a.*, e.name,
+                       d.name as department_name,
+                       st.name as shift_name
+                FROM attendance a
+                JOIN employees e ON a.employee_id = e.id
+                LEFT JOIN departments d ON e.department_code = d.code
+                LEFT JOIN employee_shifts es ON e.id = es.employee_id 
+                    AND ? BETWEEN es.start_date AND COALESCE(es.end_date, ?)
+                LEFT JOIN shift_types st ON es.shift_type_id = st.id
+                WHERE a.date = ?
+                ORDER BY a.check_in_time DESC
+            """, (current_date, current_date, current_date))
+
         records = [dict(row) for row in cursor.fetchall()]
         print(f"Found {len(records)} records")
         return records
@@ -1260,50 +1262,50 @@ class DepartmentsDatabase(Database):
     def get_all_status(self, from_date: str = None, to_date: str = None, approved: bool = None) -> List[Dict]:
         """جلب جميع سجلات الحالات مع التصفية الاختيارية"""
         query = """
-            SELECT 
-                s.id,
-                e.id as employee_id,
-                e.name as employee_name,
-                d.name as department,
-                t.name as status_type,
-                s.start_date,
-                s.end_date,
-                s.notes,
-                s.approved,
-                m.name as approved_by_name
-            FROM employee_status s
-            JOIN employees e ON s.employee_id = e.id
-            JOIN departments d ON e.department_code = d.code
-            JOIN status_types t ON s.status_type_id = t.id
-            LEFT JOIN employees m ON s.approved_by = m.id
-            WHERE 1=1
-        """
+                SELECT 
+                    s.id,
+                    e.id as employee_id,
+                    e.name as employee_name,
+                    d.name as department,
+                    t.name as status_type,
+                    s.start_date,
+                    s.end_date,
+                    s.notes,
+                    s.approved,
+                    m.name as approved_by_name
+                FROM employee_status s
+                JOIN employees e ON s.employee_id = e.id
+                JOIN departments d ON e.department_code = d.code
+                JOIN status_types t ON s.status_type_id = t.id
+                LEFT JOIN employees m ON s.approved_by = m.id
+                WHERE 1=1
+            """
         params = []
-        
+
         if from_date:
             query += " AND (s.end_date >= ? OR s.end_date IS NULL)"
             params.append(from_date)
-            
+
         if to_date:
             query += " AND s.start_date <= ?"
             params.append(to_date)
-            
+
         if approved is not None:
             query += " AND s.approved = ?"
             params.append(approved)
-            
+
         query += " ORDER BY s.start_date DESC"
-        
+
         cursor = self.execute_query(query, tuple(params))
         return [dict(row) for row in cursor.fetchall()]
 
     def get_all_permissions(self) -> List[Dict]:
         """جلب جميع الصلاحيات المتاحة"""
         cursor = self.execute_query("""
-            SELECT id, code, name, description
-            FROM permissions
-            ORDER BY name
-        """)
+                SELECT id, code, name, description
+                FROM permissions
+                ORDER BY name
+            """)
         return [dict(row) for row in cursor.fetchall()]
 
     def get_role_permissions(self, role_id: int) -> List[Dict]:
@@ -1457,25 +1459,25 @@ class DepartmentsDatabase(Database):
         """جلب معلومات المستخدم الحالي"""
         try:
             cursor = self.execute_query("""
-                SELECT 
-                    e.id,
-                    e.name,
-                    e.department_code,
-                    r.name as role_name,
-                    r.id as role_id
-                FROM current_session cs
-                JOIN employees e ON cs.employee_id = e.id
-                JOIN roles r ON e.role_id = r.id
-                WHERE cs.logged_out_at IS NULL
-                ORDER BY cs.logged_in_at DESC
-                LIMIT 1
-            """)
-            
+                    SELECT 
+                        e.id,
+                        e.name,
+                        e.department_code,
+                        r.name as role_name,
+                        r.id as role_id
+                    FROM current_session cs
+                    JOIN employees e ON cs.employee_id = e.id
+                    JOIN roles r ON e.role_id = r.id
+                    WHERE cs.logged_out_at IS NULL
+                    ORDER BY cs.logged_in_at DESC
+                    LIMIT 1
+                """)
+
             result = cursor.fetchone()
             if result:
                 return dict(result)
             return None
-            
+
         except Exception as e:
             print(f"Error getting current user: {str(e)}")
             return None
@@ -1485,30 +1487,30 @@ class DepartmentsDatabase(Database):
         try:
             # التحقق من صحة بيانات الدخول
             cursor = self.execute_query("""
-                SELECT 
-                    e.id,
-                    e.name,
-                    e.department_code,
-                    r.name as role_name,
-                    r.id as role_id
-                FROM employees e
-                JOIN roles r ON e.role_id = r.id
-                WHERE e.id = ? AND e.password = ?
-            """, (employee_id, password))
-            
+                    SELECT 
+                        e.id,
+                        e.name,
+                        e.department_code,
+                        r.name as role_name,
+                        r.id as role_id
+                    FROM employees e
+                    JOIN roles r ON e.role_id = r.id
+                    WHERE e.id = ? AND e.password = ?
+                """, (employee_id, password))
+
             user = cursor.fetchone()
             if not user:
                 return None
-                
+
             # تسجيل الجلسة الجديدة
             self.execute_query("""
-                INSERT INTO current_session (employee_id)
-                VALUES (?)
-            """, (employee_id,))
-            
+                    INSERT INTO current_session (employee_id)
+                    VALUES (?)
+                """, (employee_id,))
+
             self.commit()
             return dict(user)
-            
+
         except Exception as e:
             print(f"Error in login: {str(e)}")
             self.rollback()
@@ -1518,15 +1520,15 @@ class DepartmentsDatabase(Database):
         """تسجيل خروج المستخدم"""
         try:
             self.execute_query("""
-                UPDATE current_session
-                SET logged_out_at = CURRENT_TIMESTAMP
-                WHERE employee_id = ? 
-                AND logged_out_at IS NULL
-            """, (employee_id,))
-            
+                    UPDATE current_session
+                    SET logged_out_at = CURRENT_TIMESTAMP
+                    WHERE employee_id = ? 
+                    AND logged_out_at IS NULL
+                """, (employee_id,))
+
             self.commit()
             return True
-            
+
         except Exception as e:
             print(f"Error in logout: {str(e)}")
             self.rollback()
@@ -1537,18 +1539,18 @@ class DepartmentsDatabase(Database):
         try:
             # تحديث الأعمدة المفقودة في جداول قاعدة البيانات
             self.conn.executescript("""
-                -- تحديث جدول attendance
-                ALTER TABLE attendance ADD COLUMN source TEXT DEFAULT 'manual';
-                ALTER TABLE attendance ADD COLUMN device_id TEXT;
-                ALTER TABLE attendance ADD COLUMN status TEXT DEFAULT 'present';
+                    -- تحديث جدول attendance
+                    ALTER TABLE attendance ADD COLUMN source TEXT DEFAULT 'manual';
+                    ALTER TABLE attendance ADD COLUMN device_id TEXT;
+                    ALTER TABLE attendance ADD COLUMN status TEXT DEFAULT 'present';
 
-                -- تحديث جدول departments لإضافة عمود manager_id
-                ALTER TABLE departments ADD COLUMN manager_id TEXT;
-            """)
-            
+                    -- تحديث جدول departments لإضافة عمود manager_id
+                    ALTER TABLE departments ADD COLUMN manager_id TEXT;
+                """)
+
             self.conn.commit()
             print("Database schema updated successfully")
-            
+
         except sqlite3.Error as e:
             if 'duplicate column name' not in str(e).lower():
                 print(f"Error updating database schema: {e}")
@@ -1564,7 +1566,7 @@ class DepartmentsDatabase(Database):
                 "DELETE FROM role_permissions WHERE role_id = ?",
                 (role_id,)
             )
-            
+
             # Add new permissions
             for code in permission_codes:
                 self.execute_query(
@@ -1574,7 +1576,7 @@ class DepartmentsDatabase(Database):
                     """,
                     (role_id, code)
                 )
-                
+
             self.commit()
             return True
         except sqlite3.Error:
@@ -1586,7 +1588,7 @@ class DepartmentsDatabase(Database):
         try:
             session_id = secrets.token_urlsafe(32)
             expires_at = datetime.now() + timedelta(hours=hours)
-            
+
             self.execute_query(
                 """
                 INSERT INTO sessions 
@@ -1600,7 +1602,7 @@ class DepartmentsDatabase(Database):
         except sqlite3.Error:
             self.rollback()
             return None
-            
+
     def verify_session(self, session_id: str) -> Optional[tuple]:
         """Verify session and return (employee_id, role_code) if valid"""
         try:
@@ -1629,17 +1631,17 @@ class DepartmentsDatabase(Database):
                     (session_id,)
                 )
                 self.commit()
-                
+
                 print(f"تم التحقق من توكن تذكرني للموظف {result['employee_id']}")
                 return (result['employee_id'], result['role_code'])
-                
+
             print("توكن تذكرني غير صالح أو منتهي الصلاحية")
             return None
-            
+
         except sqlite3.Error as e:
             print(f"خطأ في التحقق من توكن تذكرني: {str(e)}")
             return None
-            
+
     def end_session(self, session_id: str) -> bool:
         """End a session"""
         try:
@@ -1655,7 +1657,7 @@ class DepartmentsDatabase(Database):
         except sqlite3.Error:
             self.rollback()
             return False
-            
+
     def cleanup_expired_sessions(self) -> None:
         """Clean up expired sessions"""
         try:
@@ -1689,11 +1691,12 @@ class DepartmentsDatabase(Database):
         except Exception as e:
             print("Error initializing default departments:", e)
 
-    def add_attendance(self, employee_id: str, date: str, action: str, source: str = 'manual', device_id: Optional[str] = None) -> bool:
+    def add_attendance(self, employee_id: str, date: str, action: str, source: str = 'manual',
+                       device_id: Optional[str] = None) -> bool:
         """إضافة سجل حضور أو انصراف جديد"""
         try:
             print(f"Adding {action} record for employee {employee_id} on {date}")
-            
+
             # التحقق من وجود الموظف
             cursor = self.execute_query(
                 "SELECT 1 FROM employees WHERE id = ?",
@@ -1702,7 +1705,7 @@ class DepartmentsDatabase(Database):
             if not cursor.fetchone():
                 print(f"Employee {employee_id} not found")
                 return False
-                
+
             # تحويل التاريخ إلى التنسيق المطلوب
             try:
                 current_date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
@@ -1711,14 +1714,14 @@ class DepartmentsDatabase(Database):
             except ValueError as e:
                 print(f"Invalid date format: {e}")
                 return False
-                
+
             # جلب سجل الحضور الحالي لليوم
             cursor = self.execute_query(
                 "SELECT * FROM attendance WHERE employee_id = ? AND date = ?",
                 (employee_id, db_date)
             )
             current_record = cursor.fetchone()
-            
+
             if action == 'check_in':
                 if current_record:
                     if current_record['check_in_time']:
@@ -1767,11 +1770,11 @@ class DepartmentsDatabase(Database):
             else:
                 print(f"Invalid action: {action}")
                 return False
-                
+
             self.commit()
             print(f"Successfully added {action} record")
             return True
-            
+
         except Exception as e:
             print(f"Error adding attendance record: {str(e)}")
             self.rollback()
@@ -1818,7 +1821,7 @@ class DepartmentsDatabase(Database):
                         "overtime_allowed": False
                     }
                 ]
-                
+
                 for shift in default_shifts:
                     cursor.execute(
                         """
@@ -1841,13 +1844,14 @@ class DepartmentsDatabase(Database):
             print(f"خطأ في إضافة الورديات الافتراضية: {str(e)}")
             self.conn.rollback()
 
-    def create_remember_me_token(self, employee_id: str, device_info: str = None, ip_address: str = None, days: int = 30) -> Optional[str]:
+    def create_remember_me_token(self, employee_id: str, device_info: str = None, ip_address: str = None, days: int = 30) -> \
+    Optional[str]:
         """إنشاء توكن تذكرني جديد"""
         try:
             # إنشاء توكن عشوائي
             token = secrets.token_urlsafe(32)
             expires_at = datetime.now() + timedelta(days=days)
-            
+
             # حذف التوكنات القديمة للموظف على نفس الجهاز
             if device_info:
                 self.execute_query(
@@ -1857,7 +1861,7 @@ class DepartmentsDatabase(Database):
                     """,
                     (employee_id, device_info)
                 )
-            
+
             # إضافة التوكن الجديد
             self.execute_query(
                 """
@@ -1867,11 +1871,11 @@ class DepartmentsDatabase(Database):
                 """,
                 (token, employee_id, device_info, ip_address, expires_at.isoformat())
             )
-            
+
             self.commit()
             print(f"تم إنشاء توكن تذكرني جديد للموظف {employee_id}")
             return token
-            
+
         except sqlite3.Error as e:
             print(f"خطأ في إنشاء توكن تذكرني: {str(e)}")
             self.rollback()
@@ -1898,7 +1902,7 @@ class DepartmentsDatabase(Database):
                 (token, device_info)
             )
             result = cursor.fetchone()
-            
+
             if result:
                 # تحديث وقت آخر استخدام
                 self.execute_query(
@@ -1910,13 +1914,13 @@ class DepartmentsDatabase(Database):
                     (token,)
                 )
                 self.commit()
-                
+
                 print(f"تم التحقق من توكن تذكرني للموظف {result['employee_id']}")
                 return (result['employee_id'], result['role_code'], result['role_id'])
-                
+
             print("توكن تذكرني غير صالح أو منتهي الصلاحية")
             return None
-            
+
         except sqlite3.Error as e:
             print(f"خطأ في التحقق من توكن تذكرني: {str(e)}")
             return None
@@ -1926,21 +1930,21 @@ class DepartmentsDatabase(Database):
         try:
             query = "DELETE FROM remember_me_tokens WHERE 1=1"
             params = []
-            
+
             if employee_id:
                 query += " AND employee_id = ?"
                 params.append(employee_id)
-                
+
             if device_info:
                 query += " AND device_info = ?"
                 params.append(device_info)
-                
+
             self.execute_query(query, tuple(params))
             self.commit()
-            
+
             print("تم حذف توكنات تذكرني بنجاح")
             return True
-            
+
         except sqlite3.Error as e:
             print(f"خطأ في حذف توكنات تذكرني: {str(e)}")
             self.rollback()
