@@ -289,46 +289,26 @@ class LoginDialog(QDialog):
             self.password_input.setFocus()
             return
             
-        # Try to reset admin password if login fails
+        # التحقق من كلمة المرور أولاً
         result = self.db.verify_password_only(password)
-        if not result and password == "Admin@2024":
-            reply = QMessageBox.question(
-                self,
-                "إعادة تعيين كلمة المرور",
-                "هل تريد إعادة تعيين كلمة مرور المدير إلى القيمة الافتراضية؟",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
-            
-            if reply == QMessageBox.StandardButton.Yes:
-                if self.db.reset_admin_password():
-                    QMessageBox.information(
-                        self,
-                        "نجاح",
-                        "تم إعادة تعيين كلمة مرور المدير\n"
-                        "حاول تسجيل الدخول مرة أخرى"
-                    )
-                    self.password_input.clear()
-                    self.password_input.setFocus()
-                    return
-                    
-        # Verify password and get employee ID and role
+        
         if result:
+            # إذا كانت كلمة المرور صحيحة، قم بتسجيل الدخول مباشرة
             employee_id, role_code, role_id = result
             self.logged_in_employee = employee_id
             self.role_code = role_code
             self.role_id = role_id
             
-            # Create session
+            # إنشاء جلسة جديدة
             self.create_session()
             
-            # Record login attempt
+            # تسجيل محاولة الدخول
             self.db.record_login_attempt(employee_id, True)
             
-            # Save remember me token if checked
+            # حفظ توكن تذكرني إذا تم اختياره
             self.save_remember_me(employee_id)
             
-            # Show welcome message based on role
+            # عرض رسالة الترحيب
             role_names = {
                 'ADMIN': 'مدير النظام',
                 'HR': 'مسؤول الموارد البشرية',
@@ -343,13 +323,33 @@ class LoginDialog(QDialog):
             
             self.accept()
         else:
-            QMessageBox.warning(
-                self,
-                "خطأ",
-                "كلمة المرور غير صحيحة\n\n"
-                "ملاحظة: إذا كنت تحاول الدخول كمدير لأول مرة،\n"
-                "جرب كلمة المرور الافتراضية: Admin@2024"
-            )
+            # فقط إذا فشل تسجيل الدخول وكانت كلمة المرور هي الافتراضية
+            if password == "Admin@2024":
+                reply = QMessageBox.question(
+                    self,
+                    "إعادة تعيين كلمة المرور",
+                    "هل تريد إعادة تعيين كلمة مرور المدير إلى القيمة الافتراضية؟",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                )
+                
+                if reply == QMessageBox.StandardButton.Yes:
+                    if self.db.reset_admin_password():
+                        QMessageBox.information(
+                            self,
+                            "نجاح",
+                            "تم إعادة تعيين كلمة مرور المدير\n"
+                            "حاول تسجيل الدخول مرة أخرى"
+                        )
+                        self.password_input.clear()
+                        self.password_input.setFocus()
+                        return
+            else:
+                QMessageBox.warning(
+                    self,
+                    "خطأ",
+                    "كلمة المرور غير صحيحة"
+                )
             self.password_input.clear()
             self.password_input.setFocus()
             
