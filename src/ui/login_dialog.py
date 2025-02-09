@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QMessageBox, QCheckBox,
-    QFrame
+    QFrame, QToolButton
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QPixmap
@@ -98,13 +98,25 @@ class LoginDialog(QDialog):
         form_layout = QVBoxLayout()
         form_container.setLayout(form_layout)
         
-        # Password input
+        # Password input with toggle button
         password_layout = QVBoxLayout()
+        pw_layout = QHBoxLayout()
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setPlaceholderText("أدخل كلمة المرور")
         self.password_input.setMinimumHeight(50)
-        password_layout.addWidget(self.password_input)
+        self.toggle_button = QToolButton()
+        self.toggle_button.setText("👁")
+        self.toggle_button.setCheckable(True)
+        self.toggle_button.setFixedSize(30,30)
+        self.toggle_button.setStyleSheet("QToolButton { border: none; }")
+        self.toggle_button.clicked.connect(self.toggle_password_visibility)
+        pw_layout.addWidget(self.password_input)
+        pw_layout.addWidget(self.toggle_button)
+        password_layout.addLayout(pw_layout)
+        
+        # Add password layout to form layout
+        form_layout.addLayout(password_layout)
         
         # Remember me checkbox
         self.remember_me = QCheckBox("تذكرني")
@@ -129,7 +141,6 @@ class LoginDialog(QDialog):
         buttons_layout.addWidget(self.login_btn)
         
         # Add all layouts to form container
-        form_layout.addLayout(password_layout)
         form_layout.addWidget(self.remember_me)
         form_layout.addLayout(buttons_layout)
         
@@ -356,4 +367,12 @@ class LoginDialog(QDialog):
             
     def get_session_info(self) -> tuple:
         """Return session information (employee_id, role_code, session_id)"""
-        return (self.logged_in_employee, self.role_code, self.session_id) 
+        return (self.logged_in_employee, self.role_code, self.session_id)
+
+    def toggle_password_visibility(self):
+        if self.toggle_button.isChecked():
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.toggle_button.setText("🙈")
+        else:
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self.toggle_button.setText("👁") 
