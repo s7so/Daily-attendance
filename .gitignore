@@ -21,9 +21,14 @@ wheels/
 *.egg
 
 # Virtual Environment
+.venv/
 venv/
 env/
 ENV/
+Scripts/
+Lib/
+Include/
+pyvenv.cfg
 
 # IDE
 .idea/
