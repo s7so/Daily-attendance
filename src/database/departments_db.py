@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 from datetime import datetime, date, timedelta
 import secrets
 import os
+import hashlib
 
 
 class DepartmentsDatabase(Database):
@@ -2004,8 +2005,8 @@ class DepartmentsDatabase(Database):
             
             if admin_count == 0:
                 # إنشاء مستخدم مدير افتراضي
-                default_password = "admin123"  # كلمة مرور افتراضية
-                hashed_password = "هنا يتم استخدام دالة التجزئة المناسبة"
+                default_password = "admin123"
+                hashed_password = self._hash_password(default_password)
                 
                 # الحصول على معرف دور المدير
                 cursor.execute("SELECT id FROM roles WHERE code = 'admin'")
@@ -2032,3 +2033,7 @@ class DepartmentsDatabase(Database):
         except Exception as e:
             print(f"خطأ في إنشاء المدير الافتراضي: {str(e)}")
             self.conn.rollback()
+
+    def _hash_password(self, password: str) -> str:
+        """تجزئة كلمة المرور باستخدام SHA-256 (مثال مؤقت)"""
+        return hashlib.sha256(password.encode()).hexdigest()
